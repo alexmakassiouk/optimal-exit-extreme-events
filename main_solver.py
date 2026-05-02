@@ -10,15 +10,14 @@ from scipy.optimize import newton
 from tqdm import tqdm
 
 from plot_utils import get_figsize, save_figure, set_plot_style
+from .params import ModelParams
 from .utils import (
-    ModelParams,
     n_bar_func,
     d_1_func,
     d_2_func,
     g_func,
     perpetuity_value,
     x_star_top_func,
-    x_star_top_func_alt,
     zeta_func_alt,
 )
 
