@@ -16,6 +16,10 @@ from .utils import (
 )
 
 
+CoeffKey = Tuple[int, int, int]
+CoeffDict = Dict[CoeffKey, float]
+
+
 @dataclass
 class LevelSolution:
     """Container for one level n.
@@ -29,10 +33,7 @@ class LevelSolution:
 
 
 def _zeta(params: ModelParams, n: int, k: int, d: float, x_star_nkp1: float) -> float:
-    """Wrapper implementing zeta(n,k,d) using the paper's definition.
-
-    This mirrors utils.zeta_func_alt but uses x = x_{n+k-1}^* explicitly.
-    """
+    """Wrapper for the forcing term using x_{n+k-1}^* explicitly."""
 
     return zeta_func_alt(params, n, k, d, x_star_nkp1)
 
@@ -42,9 +43,14 @@ def solve_all_levels(params: ModelParams, n_bar: Optional[int] = ..., debug_n: N
 @overload
 def solve_all_levels(params: ModelParams, n_bar: Optional[int] = ..., *, debug_n: int, return_coeffs: Literal[False] = ...) -> Callable[..., float]: ...
 @overload
-def solve_all_levels(params: ModelParams, n_bar: Optional[int] = ..., debug_n: None = ..., *, return_coeffs: Literal[True]) -> Tuple[Dict[int, LevelSolution], Dict[Tuple[int, int, int], float], Dict[Tuple[int, int, int], float]]: ...
+def solve_all_levels(params: ModelParams, n_bar: Optional[int] = ..., debug_n: None = ..., *, return_coeffs: Literal[True]) -> Tuple[Dict[int, LevelSolution], CoeffDict, CoeffDict]: ...
 
-def solve_all_levels(params: ModelParams, n_bar: Optional[int] = None, debug_n: Optional[int] = None, return_coeffs: bool = False):
+def solve_all_levels(
+    params: ModelParams,
+    n_bar: Optional[int] = None,
+    debug_n: Optional[int] = None,
+    return_coeffs: bool = False,
+):
     """Solve thresholds x_n^* and value functions v(x,n) for all n=0,...,n_bar-1.
 
     This is a generalisation of `n_bar_3/main_solver_rita.py` to arbitrary n_bar,
@@ -70,8 +76,8 @@ def solve_all_levels(params: ModelParams, n_bar: Optional[int] = None, debug_n: 
 
     # --- Coefficients A_{n,k,j}, B_{n,k,j} ---
     # Use nested dicts keyed by (n,k,j)
-    A: Dict[Tuple[int, int, int], float] = {}
-    B: Dict[Tuple[int, int, int], float] = {}
+    A: CoeffDict = {}
+    B: CoeffDict = {}
 
     # Growth condition: for all n and j, A_{n, k_max, j} = 0
     # where k_max(n) = n_bar - n
@@ -246,7 +252,10 @@ def solve_all_levels(params: ModelParams, n_bar: Optional[int] = None, debug_n: 
             print(f"  Term 1 (Akk0): {term_main:.6e}")
             print(f"  Term 2 (Bracket): {term_bracket:.6e}")
             print(f"  Sum: {F_val:.6e}")
-            print(f"  Cancellation check: |Sum| / max(|T1|, |T2|) = {abs(F_val)/max(abs(term_main), abs(term_bracket)):.6e}")
+            print(
+                "  Cancellation check: |Sum| / max(|T1|, |T2|) = "
+                f"{abs(F_val)/max(abs(term_main), abs(term_bracket)):.6e}"
+            )
 
         return F_val
 
@@ -311,26 +320,33 @@ def solve_all_levels(params: ModelParams, n_bar: Optional[int] = None, debug_n: 
 
     return solutions
 
-def V_hat_conventional(params, x):
-    return x/(params.r-params.mu) - params.c/params.r
+def V_hat_conventional(params: ModelParams, x: float) -> float:
+    """Perpetuity value under the conventional model (no jumps)."""
 
-def solve_conventional_model(params):
+    return x / (params.r - params.mu) - params.c / params.r
+
+
+def solve_conventional_model(params: ModelParams) -> LevelSolution:
+    """Solve the benchmark no-jump model (lambda=0, phi=0)."""
+
     params = ModelParams(**{**params.__dict__, "lambd": 0, "phi": 0})
     d_2 = d_2_func(params)
 
-    x_star = d_2/(d_2-1)*(params.c/params.r + params.L)*(params.r-params.mu)
-    B = -1/(d_2*(params.r-params.mu))*x_star**(1-d_2)
+    x_star = d_2 / (d_2 - 1) * (params.c / params.r + params.L) * (params.r - params.mu)
+    B = -1 / (d_2 * (params.r - params.mu)) * x_star ** (1 - d_2)
 
-    def make_v_conventional():
-        def v(params, x):
+    def make_v_conventional() -> Callable[[ModelParams, float], float]:
+        def v(params: ModelParams, x: float) -> float:
             x_arr = np.asarray(x, dtype=float)
             res = np.zeros_like(x_arr, dtype=float)
             for idx, xv in np.ndenumerate(x_arr):
                 if xv < x_star:
-                    res[idx] = params.L-V_hat_conventional(params,xv)
+                    res[idx] = params.L - V_hat_conventional(params, xv)
                 else:
-                    res[idx] = B*xv**d_2
+                    res[idx] = B * xv**d_2
             return float(res) if np.isscalar(x) else res
+
         return v
+
     solution = LevelSolution(x_star=x_star, v=make_v_conventional())
     return solution

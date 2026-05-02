@@ -3,48 +3,43 @@ import math
 from .params import ModelParams
 
 
-# --- Characteristic Roots ---
-def d_1_func(params: ModelParams) -> float:
-    """
-    Positive root of characteristic equation
-    """
-    term_1 = 0.5 - params.mu / params.sigma**2
-    term_2 = math.sqrt(
+def _characteristic_sqrt_term(params: ModelParams) -> float:
+    """Shared square-root term in the characteristic roots."""
+
+    return math.sqrt(
         (params.mu / params.sigma**2 - 0.5) ** 2
         + 2 * (params.r + params.lambd) / params.sigma**2
     )
+
+
+# --- Characteristic Roots ---
+def d_1_func(params: ModelParams) -> float:
+    """Positive root of the characteristic equation."""
+
+    term_1 = 0.5 - params.mu / params.sigma**2
+    term_2 = _characteristic_sqrt_term(params)
     return term_1 + term_2
 
 
 def d_2_func(params: ModelParams) -> float:
-    """
-    Negative root of characteristic equation
-    """
+    """Negative root of the characteristic equation."""
+
     term_1 = 0.5 - params.mu / params.sigma**2
-    term_2 = math.sqrt(
-        (params.mu / params.sigma**2 - 0.5) ** 2
-        + 2 * (params.r + params.lambd) / params.sigma**2
-    )
+    term_2 = _characteristic_sqrt_term(params)
     return term_1 - term_2
 
 
 # --- Absorbing State ---
 def n_bar_func(params: ModelParams) -> int:
-    """
-    Calculates the absorbing jump level n_bar.
-    When n >= n_bar, profit is always negative, and the firm stops.
-    """
+    """Absorbing jump level n_bar where continuation is no longer optimal."""
+
     return math.ceil(1 / params.phi)
 
 
 # --- Perpetuity Value ---
 def perpetuity_value(params: ModelParams, x: float, n: int) -> float:
-    """
-    Calculates V_hat(x,n) which is the expected PV of operating forever
-    with n initial jumps.
-    V_hat(x,n) = x/(r-mu) * (1-phi * n - phi*lambda/(r-mu)) - c/r
-    such that V(x,n) = V_hat(x,n) + v(x,n)
-    """
+    """Perpetuity component V_hat(x, n) of firm value."""
+
     if params.r == params.mu:
         # Avoid division by zero
         raise ZeroDivisionError
@@ -86,8 +81,15 @@ def x_star_top_func(params: ModelParams) -> float:
     )
 
 
-def zeta_func_alt(params: ModelParams, n: int, k: int, d: float, x_npkm1) -> float:
-    # This function will need the solved A, B coefficients and the x_stars
+def zeta_func_alt(
+    params: ModelParams,
+    n: int,
+    k: int,
+    d: float,
+    x_npkm1: float,
+) -> float:
+    """Right-hand-side forcing term for coefficient recursion at region k."""
+
     term_1 = (
         d
         * (params.lambd / (params.r + params.lambd)) ** (k - 1)
