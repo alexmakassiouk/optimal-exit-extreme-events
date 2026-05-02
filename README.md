@@ -10,7 +10,7 @@ intended to serve as a compact and reproducible appendix artifact.
 - Closed-form and recursive building blocks for the exit model.
 - Multi-level threshold solver for the jump-augmented setting.
 - Conventional benchmark solver (no jump risk).
-- Minimal package API through [__init__.py](__init__.py).
+- Minimal package API through [**init**.py](__init__.py).
 
 Plotting and animation utilities have been intentionally removed so the repository
 remains focused on the analytical core.
@@ -20,7 +20,7 @@ remains focused on the analytical core.
 - [params.py](params.py): immutable model parameter container and admissibility checks.
 - [utils.py](utils.py): mathematical primitives used by the solver.
 - [main_solver.py](main_solver.py): recursive threshold/value-function solvers.
-- [__init__.py](__init__.py): package-level exports.
+- [**init**.py](__init__.py): package-level exports.
 
 ## Quick Use
 
@@ -46,6 +46,16 @@ params = ModelParams(
 solutions = solve_all_levels(params)
 x0_star = solutions[0].x_star
 ```
+
+## Quick start
+
+Run a lightweight end-to-end sanity check:
+
+```bash
+python quickstart.py
+```
+
+This script serves both as a quick-start example and a smoke test for core solver functionality.
 
 ## Notes
 
