@@ -2,7 +2,6 @@ import math
 from dataclasses import dataclass
 from typing import Callable, Dict, Literal, Optional, Tuple, overload
 
-import numpy as np
 from scipy.optimize import newton
 
 from .params import ModelParams
@@ -280,34 +279,27 @@ def solve_all_levels(
         k_max = n_bar - n
 
         def v(params_: ModelParams, x: float) -> float:
-            x_arr = np.asarray(x, dtype=float)
-            res = np.zeros_like(x_arr, dtype=float)
+            if x < x_star[n]:
+                return g_func(params_, x, n, 0)
 
-            for idx, xv in np.ndenumerate(x_arr):
-                if xv < x_star[n]:
-                    res[idx] = g_func(params_, xv, n, 0)
-                else:
-                    # find region k such that x in [x_{n+k-1}^*, x_{n+k}^*)
-                    # with convention x_{n+k_max}^* = +inf
-                    k_region = k_max
-                    for k in range(1, k_max):
-                        lower = x_star[n + k - 1]
-                        upper = x_star[n + k] if (n + k) in x_star else math.inf
-                        if lower <= xv < upper:
-                            k_region = k
-                            break
+            # Find region k such that x in [x_{n+k-1}^*, x_{n+k}^*)
+            # with convention x_{n+k_max}^* = +inf.
+            k_region = k_max
+            for k in range(1, k_max):
+                lower = x_star[n + k - 1]
+                upper = x_star[n + k] if (n + k) in x_star else math.inf
+                if lower <= x < upper:
+                    k_region = k
+                    break
 
-                    # compute sum over j for this region
-                    val = 0.0
-                    ln_x = math.log(xv)
-                    for j in range(0, k_region):
-                        Aj = A.get((n, k_region, j), 0.0)
-                        Bj = B.get((n, k_region, j), 0.0)
-                        val += (Aj * ln_x**j * xv**d1 + Bj * ln_x**j * xv**d2)
-                    val += g_func(params_, xv, n, k_region)
-                    res[idx] = val
-
-            return float(res) if np.isscalar(x) else res
+            val = 0.0
+            ln_x = math.log(x)
+            for j in range(0, k_region):
+                Aj = A.get((n, k_region, j), 0.0)
+                Bj = B.get((n, k_region, j), 0.0)
+                val += Aj * ln_x**j * x**d1 + Bj * ln_x**j * x**d2
+            val += g_func(params_, x, n, k_region)
+            return val
 
         return v
 
@@ -337,14 +329,9 @@ def solve_conventional_model(params: ModelParams) -> LevelSolution:
 
     def make_v_conventional() -> Callable[[ModelParams, float], float]:
         def v(params: ModelParams, x: float) -> float:
-            x_arr = np.asarray(x, dtype=float)
-            res = np.zeros_like(x_arr, dtype=float)
-            for idx, xv in np.ndenumerate(x_arr):
-                if xv < x_star:
-                    res[idx] = params.L - V_hat_conventional(params, xv)
-                else:
-                    res[idx] = B * xv**d_2
-            return float(res) if np.isscalar(x) else res
+            if x < x_star:
+                return params.L - V_hat_conventional(params, x)
+            return B * x**d_2
 
         return v
 

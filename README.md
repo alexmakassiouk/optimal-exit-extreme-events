@@ -24,6 +24,12 @@ remains focused on the analytical core.
 
 ## Quick Use
 
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
 ```python
 from optimal_exit_extreme_events import ModelParams, solve_all_levels
 
